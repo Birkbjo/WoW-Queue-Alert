@@ -1,5 +1,9 @@
 {
-    "PUSHBULLET_API_KEY": "",
-    "PUSHBULLET_DEVICE_ID": "",
-    "CHECK_INTERVAL": 30000
+    "PUSHBULLET": {
+        "API_KEY": "",
+        "DEVICE_ID": ""
+    },
+    "PLAY_SOUND": "assets/victory.mp3",
+    "CHECK_INTERVAL": 30000,
+    "DISPLAY": 0
 }

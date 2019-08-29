@@ -2,11 +2,13 @@ const screenshot = require("screenshot-desktop");
 const { TesseractWorker, OEM, PSM } = require("tesseract.js");
 const Notifier = require("./notify");
 const config = require("./config.json");
+const fs = require('fs');
+const path = require('path');
+const player = require('play-sound')();
 
 const ocrWorker = new TesseractWorker();
-
 async function screenShot(display = 0) {
-    const img = await screenshot({ format: "png" });
+    const img = await screenshot({ format: 'png' });
     return img;
 }
 
@@ -48,12 +50,21 @@ async function run() {
         }
     }
     console.log("NOT IN QUEUE");
+    queueDone();
     ocrWorker.terminate();
+}
+
+function queueDone() {
+    if(config.PLAY_SOUND) {
+        player.play(config.PLAY_SOUND, err => console.log('Failed to play: ', err))
+    }
+    if(config.PUSHBULLET && config.PUSHBULLET.API_KEY) {
+        Notifier = new Notifier()
+    }
 }
 
 function main(args) {
     if (args.length < 3) {
-        //const Not = new Notifier();
         run();
     } else if (args.includes("test")) {
     }

@@ -8,13 +8,13 @@ class Notifier {
     }
 
     async init() {
-        if (!config || !config.PUSHBULLET_API_KEY) {
+        if (!config || !config.PUSHBULLET.API_KEY) {
             console.log("Notifier not configured");
             return;
         }
         this.PB = new Pushbullet(config.PUSHBULLET_API_KEY);
         this.PB.note = promisify(this.PB.note);
-        this.device = config.PUSHBULLET_DEVICE_ID;
+        this.device = config.PUSHBULLET.DEVICE_ID;
         const d = await this.PB.devices();
         console.log(d);
         console.log();
