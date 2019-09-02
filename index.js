@@ -68,10 +68,11 @@ async function run(argv) {
 
 function timesUp() {
     if (config.PLAY_SOUND) {
-        player.play(
-            config.PLAY_SOUND,
-            err => err && log.error('Failed to play: ', err)
-        );
+        const playPath = path.isAbsolute(config.PLAY_SOUND)
+            ? config.PLAY_SOUND
+            : path.join(__dirname, config.PLAY_SOUND);
+
+        player.play(playPath, err => err && log.error('Failed to play: ', err));
     }
     if (config.PUSHBULLET && config.PUSHBULLET.API_KEY) {
         const body =
@@ -118,10 +119,9 @@ async function dryRun(argv) {
     const displays = await screenshot.listDisplays();
     for (d in displays) {
         const display = displays[d];
-        screenShot(display.id, true)
-            .catch(err => {
-                log.error('Failed to screenshot:', err);
-            });
+        screenShot(display.id, true).catch(err => {
+            log.error('Failed to screenshot:', err);
+        });
     }
     timesUp();
 }

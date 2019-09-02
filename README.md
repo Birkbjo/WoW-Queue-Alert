@@ -23,7 +23,7 @@ No violation of TOS, no automation - just notifications!
 
 ## Setup
 
-By default it takes screenshots of your primary monitor, and plays an alert when it thinks you are in Character Select screen. You can setup notifications to you
+By default it takes screenshots of your primary monitor, and plays an alert when it thinks you are in Character Select screen.
 
 ### Notifications
 To get notifications to your device:
@@ -41,16 +41,16 @@ The configuration-file is located in `config.json`.
 
 `PUSHBULLET` - Contains parameters for pushbullet integration. See [Notifications](#notifications).
 
-`PLAY_SOUND` - A path to a `mp3`-file to be played when character selection screen is shown. If empty or `false`, no sound is played.
+`PLAY_SOUND` - A path to a `mp3`-file to be played when character selection screen is shown. Can be an absolute-path, or relative to the project. If empty or `false`, no sound is played.
 
 `CHECK_INTERVAL` - Time in `ms` between every screenshot and queue-check.
 
-`DISPLAY` - The display index that WoW is running in. When you run `npm test` several `.png`-files will be saved to the project folder, eg. `0.png`. You can run this command and look at the images so find the correct index of your monitor.
+`DISPLAY` - The display index that WoW is running in. When you run `npm test` several `.png`-files will be saved to the `current working directory` , eg. `0.png`. You can run this command and look at the images so find the correct index of your monitor.
 
 ### CLI options
 
 #### --dry
-Do a dry-run, which 'simulates' queue completion. Use this to test notifications-setup. Note that the volume may be loud!
+Do a dry-run, which 'simulates' queue completion. Use this to test notifications-setup and get sample images of each monitor. Note that the volume may be loud!
 
 #### --setup, -s,
 Rerun first-time setup. E.g change PushBullet-device.
