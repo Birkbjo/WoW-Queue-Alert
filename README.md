@@ -4,7 +4,7 @@ A small Node.js application that monitors your WoW-queue and notifies you when i
 
 ## How does it work?
 
-It's pretty simple: it take a screenshot of your monitor and use [OCR](https://github.com/tesseract-ocr/) to
+It's pretty simple: it takes a screenshot of your monitor and use [OCR](https://github.com/tesseract-ocr/) to
 recognize key-words that should be present on the screen when you are in character select. [Pushbullet](https://www.pushbullet.com/) integration gives you a notifcation straight to your device!
 
 No violation of TOS, no automation!
@@ -51,7 +51,7 @@ The configuration-file is located in `config.json`.
 
 `POSITION_THRESHOLD` - Queue position threshold for sending a notification regardless of `UPDATE_INTERVAL`. If your position is lower than this, a notifcation is sent. Default: 200
 
-`DISPLAY` - The display ID that WoW is running in. When you run `npm test` several `.png`-files will be saved to the `current working directory` , eg. `0.png`. You can run this command and look at the images to find the correct ID of your monitor.
+`DISPLAY` - The display ID that WoW is running in. When you run `npm run dry` several `.png`-files will be saved to the `current working directory` , eg. `0.png`. You can run this command and look at the images to find the correct ID of your monitor.
 
 ### CLI options
 
