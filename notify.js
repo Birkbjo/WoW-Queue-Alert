@@ -16,6 +16,7 @@ class Notifier {
         this.PB.note = promisify(this.PB.note);
         this.PB.devices = promisify(this.PB.devices);
         this.active = false;
+        this.lastNotificationTime = null;
 
         if (
             (!config.PUSHBULLET.DEVICE_ID &&
@@ -77,6 +78,7 @@ class Notifier {
         let d
         try {
             d = await this.PB.note(this.device, title, body);
+            this.lastNotificationTime = new Date();
             log.debug('Notification sent!');
         } catch (e) {
             log.error('Failed to send notification: ', e);

@@ -12,6 +12,8 @@ const ocrWorker = new TesseractWorker();
 
 const notifier = new Notifier();
 
+let positionNotificationSent = false;
+
 const queueDoneQuotes = [
     "Time's up, let's do this! LEEEEEERRROYYYYY JENKKKIIINNNSS",
     "Lok'tar ogar!",
@@ -79,7 +81,7 @@ function recognizeQueuePosition(tesseractWords) {
     for (let i = 0; i < words.length; i++) {
         let w = words[i];
         if (positionKeywords.includes(w)) {
-            //Ocr may fail some words, so we try some positions ahead
+            //OCR may fail some words, so we try some positions ahead
             const pos = findNumber(words, i, i + 3);
             if (pos) {
                 //try to find time:
@@ -97,20 +99,28 @@ function isProbablyLoggedIn(text) {
     return words.some(w => lowertext.includes(w));
 }
 
-function handlePositionUpdate([pos, time], update) {
+function handlePositionUpdate([pos, time], lastUpdate) {
     const updateThreshold = config.UPDATE_INTERVAL || 1800000; // 30 min
-    const positionThreshold = config.POSITION_THRESHOLD || 500;
+    const positionThreshold = config.POSITION_THRESHOLD || 200;
     const now = new Date();
     log.debug('Position:', pos, ' Estimated time:', time);
-    if (pos <= positionThreshold || now - update >= updateThreshold) {
+    const positionSend = !positionNotificationSent && pos <= positionThreshold;
+
+    if (positionSend) {
+        log.debug('Position below threshold, sending notification');
+        positionNotificationSent = true;
+    }
+
+    if (positionSend || now - lastUpdate >= updateThreshold) {
         if (notifier.active) {
-            log.debug('Notification interval passed, sending notification')
             notifier.notify(
                 'Queue position update',
                 `You are now in position: ${pos}.\nEstimated time: ${time} min.`
             );
         }
+        return true;
     }
+    return false;
 }
 
 async function run(argv) {
@@ -128,14 +138,16 @@ async function run(argv) {
         loggedIn = isProbablyLoggedIn(screenText);
         const posTime = recognizeQueuePosition(words);
         if (posTime) {
-            handlePositionUpdate(posTime, lastUpdate);
+            const didNotify = handlePositionUpdate(posTime, lastUpdate);
+            if (didNotify) {
+                lastUpdate = new Date();
+            }
         }
         if (!loggedIn) {
             await sleep(sleepT);
-            lastUpdate = new Date();
         }
     }
-    log.info('Queue complete!. Shutting down.');
+    log.info('Queue complete!. Shutting down...');
     ocrWorker.terminate();
     timesUp();
 }
