@@ -10,4 +10,4 @@ Wend
 
 ' Release the audio file
 oPlayer.close
-'WScript.Quit 0
+WScript.Quit 0

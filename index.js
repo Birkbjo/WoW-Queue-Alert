@@ -49,8 +49,8 @@ async function regocnize(img, opts = { verbose: true }) {
     });
 
     if (opts.verbose) {
-        fs.writeFile('output.png', processedImg, err => err && log.error(err));
         job.progress(p => log.debug(p));
+        fs.writeFile('output.png', processedImg, err => err && log.error(err));
     }
     let res;
     try {
@@ -130,8 +130,8 @@ async function run(argv) {
     while (loggedIn === false) {
         const img = await screenShot(config.DISPLAY);
         const [screenText, words] = await regocnize(img, argv);
-        process.exit(-1);
         if (!screenText) {
+            process.exit(-1);
         }
 
         loggedIn = isProbablyLoggedIn(screenText);
