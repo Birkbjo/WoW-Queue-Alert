@@ -7,7 +7,7 @@ A small Node.js application that monitors your WoW-queue and notifies you when i
 It's pretty simple: it take a screenshot of your monitor and use [OCR](https://github.com/tesseract-ocr/) to
 recognize key-words that should be present on the screen when you are in character select. [Pushbullet](https://www.pushbullet.com/) integration gives you a notifcation straight to your device!
 
-No violation of TOS, no automation - just notifications!
+No violation of TOS, no automation!
 
 
 ## Installation
@@ -66,7 +66,7 @@ Sets log level to debug. Also outputs the processed image the OCR uses for recog
 
 ## Limitations
 
-* Currently, the way we capture screenshots on `windows` may result in pretty bad image quality, so the OCR-lib is not able to recognize the queue size. This means that we cannot get the queue-position programatically.
+* Currently, the way we capture screenshots on `windows` may result in pretty bad image quality, so the OCR-lib may fail to recognize the queue position and estimated time.
 
 * World of Warcraft must be running in the foreground of the specified monitor.
 

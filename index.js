@@ -103,8 +103,8 @@ function handlePositionUpdate([pos, time], update) {
     const now = new Date();
     log.debug('Position:', pos, ' Estimated time:', time);
     if (pos <= positionThreshold || now - update >= updateThreshold) {
-        log.debug('Notification interval passed, sending notification')
-        if (notifier.device) {
+        if (notifier.active) {
+            log.debug('Notification interval passed, sending notification')
             notifier.notify(
                 'Queue position update',
                 `You are now in position: ${pos}.\nEstimated time: ${time} min.`
@@ -135,7 +135,7 @@ async function run(argv) {
             lastUpdate = new Date();
         }
     }
-    log.info('NOT IN QUEUE!');
+    log.info('Queue complete!. Shutting down.');
     ocrWorker.terminate();
     timesUp();
 }
@@ -148,7 +148,7 @@ function timesUp() {
 
         player.play(playPath, err => err && log.error('Failed to play: ', err));
     }
-    if (config.PUSHBULLET && config.PUSHBULLET.API_KEY) {
+    if (notifier.active) {
         const body =
             queueDoneQuotes[Math.floor(Math.random() * queueDoneQuotes.length)];
         notifier.notify('WoW queue complete!', body);
