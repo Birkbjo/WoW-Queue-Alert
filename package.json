@@ -1,21 +1,20 @@
 {
-  "name": "classicqueuenotification",
-  "version": "0.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "start": "node index.js",
-    "dry": "node index.js --dry"
-  },
-  "author": "",
-  "license": "ISC",
-  "dependencies": {
-    "inquirer": "^7.0.0",
-    "play-sound": "^1.1.3",
-    "pushbullet": "^2.4.0",
-    "screenshot-desktop": "^1.9.0",
-    "sharp": "^0.23.0",
-    "tesseract.js": "^2.0.0-alpha.15",
-    "ulog": "^1.1.0"
-  }
+    "name": "classicqueuenotification",
+    "version": "0.0.0",
+    "description": "",
+    "main": "index.js",
+    "scripts": {
+        "start": "node index.js",
+        "dry": "node index.js --dry"
+    },
+    "author": "",
+    "license": "ISC",
+    "dependencies": {
+        "inquirer": "^7.0.0",
+        "pushbullet": "^2.4.0",
+        "screenshot-desktop": "^1.9.0",
+        "sharp": "^0.23.0",
+        "tesseract.js": "^2.0.0-alpha.15",
+        "ulog": "^1.1.0"
+    }
 }

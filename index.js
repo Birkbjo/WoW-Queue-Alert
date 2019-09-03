@@ -4,12 +4,12 @@ const Notifier = require('./notify');
 const config = require('./config.json');
 const fs = require('fs');
 const path = require('path');
-const player = require('play-sound')();
 const log = require('ulog')('WQA');
 const sharp = require('sharp');
 const inquirer = require('inquirer');
-const ocrWorker = new TesseractWorker();
+const child_process = require('child_process');
 
+const ocrWorker = new TesseractWorker();
 const notifier = new Notifier();
 
 let positionNotificationSent = false;
@@ -21,22 +21,21 @@ const queueDoneQuotes = [
     'Elune be with you!',
     'Queue is da POOP!',
     'GOOD NEWS EVERYONE!',
-    'Well met!',
+    'Well met!'
 ];
 
 async function screenShot(screen = 0, filename = null) {
     if (filename) {
-        filename = `${screen}.png`;
+        filename = `${filename}.png`;
     }
 
     const img = await screenshot({ filename, format: 'png', screen });
     return img;
 }
-
 async function processImage(img) {
-    // Black pixels below 200, white above = way easier for OCR to recognize text
     const processed = await sharp(img)
-        .threshold(200)
+        // Black pixels below 200, white above = way easier for OCR to recognize text
+        .threshold(180)
         .png()
         .toBuffer();
     return processed;
@@ -46,12 +45,12 @@ async function regocnize(img, opts = { verbose: true }) {
     const processedImg = await processImage(img);
     const job = ocrWorker.recognize(processedImg, 'eng', {
         tessedit_ocr_engine_mode: OEM.TESSERACT_ONLY,
-        tessedit_pageseg_mode: PSM.SPARSE_TEXT_OSD,
+        tessedit_pageseg_mode: PSM.SPARSE_TEXT_OSD
     });
 
     if (opts.verbose) {
-        job.progress(p => log.debug(p));
         fs.writeFile('output.png', processedImg, err => err && log.error(err));
+        job.progress(p => log.debug(p));
     }
     let res;
     try {
@@ -131,8 +130,8 @@ async function run(argv) {
     while (loggedIn === false) {
         const img = await screenShot(config.DISPLAY);
         const [screenText, words] = await regocnize(img, argv);
+        process.exit(-1);
         if (!screenText) {
-            process.exit(-1);
         }
 
         loggedIn = isProbablyLoggedIn(screenText);
@@ -149,21 +148,38 @@ async function run(argv) {
     }
     log.info('Queue complete!. Shutting down...');
     ocrWorker.terminate();
-    timesUp();
+    await timesUp();
 }
 
-function timesUp() {
+function playSound() {
+    const playPath = path.isAbsolute(config.PLAY_SOUND)
+        ? config.PLAY_SOUND
+        : path.join(__dirname, config.PLAY_SOUND);
+
+    const errHandler = err => err && log.error('Failed to play sound', err);
+    if (process.platform === 'win32') {
+        child_process.execFile(
+            'cscript.exe',
+            [path.join(__dirname, 'win32', 'wmplayer.vbs'), playPath],
+            errHandler
+        );
+    } else if (process.playform === 'darwin') {
+        child_process.execFile('afplay', [playPath], errHandler);
+    }
+}
+
+async function timesUp() {
+    if (notifier.active) {
+        const body =
+            queueDoneQuotes[Math.floor(Math.random() * queueDoneQuotes.length)];
+        notifier.notify('WoW queue complete!', body);
+    }
     if (config.PLAY_SOUND) {
         const playPath = path.isAbsolute(config.PLAY_SOUND)
             ? config.PLAY_SOUND
             : path.join(__dirname, config.PLAY_SOUND);
 
-        player.play(playPath, err => err && log.error('Failed to play: ', err));
-    }
-    if (notifier.active) {
-        const body =
-            queueDoneQuotes[Math.floor(Math.random() * queueDoneQuotes.length)];
-        notifier.notify('WoW queue complete!', body);
+        playSound(playPath);
     }
 }
 
@@ -171,7 +187,7 @@ function parseArgs(argv) {
     const parsedArgv = {
         verbose: false,
         dryRun: false,
-        setup: false,
+        setup: false
     };
 
     for (i in argv) {
@@ -221,7 +237,6 @@ async function main(args) {
         run(argv);
     }
 }
-
 main(process.argv);
 
 function sleep(ms) {
