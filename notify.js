@@ -15,15 +15,20 @@ class Notifier {
         this.PB = new Pushbullet(config.PUSHBULLET.API_KEY);
         this.PB.note = promisify(this.PB.note);
         this.PB.devices = promisify(this.PB.devices);
+        this.active = false;
 
         if (
             (!config.PUSHBULLET.DEVICE_ID &&
                 config.PUSHBULLET.DEVICE_ID !== null) ||
             argv.setup
         ) {
-            await this.setup();
+            const success = await this.setup();
+            if(success) {
+                this.active = true;
+            }
         } else {
             this.device = config.PUSHBULLET.DEVICE_ID;
+            this.active = true;
         }
     }
 
@@ -61,18 +66,22 @@ class Notifier {
             log.info(
                 `Device set to: ${answer.device.nickname} (id:${answer.device.iden})`
             );
+            return true;
         } catch (e) {
             log.error('Failed to get devices: ', e);
+            return false;
         }
     }
 
     async notify(title, body) {
+        let d
         try {
-            const d = await this.PB.note(this.device, title, body);
+            d = await this.PB.note(this.device, title, body);
             log.debug('Notification sent!');
         } catch (e) {
             log.error('Failed to send notification: ', e);
         }
+        return d;
     }
 }
 

@@ -25,6 +25,8 @@ No violation of TOS, no automation - just notifications!
 
 By default it takes screenshots of your primary monitor, and plays an alert when it thinks you are in Character Select screen.
 
+Ideally, you should try running the program on a character-select screen (eg. log into a low-population server), and verify that it recognizes that you are not in a queue.
+
 ### Notifications
 To get notifications to your device:
 
@@ -43,9 +45,13 @@ The configuration-file is located in `config.json`.
 
 `PLAY_SOUND` - A path to a `mp3`-file to be played when character selection screen is shown. Can be an absolute-path, or relative to the project. If empty or `false`, no sound is played.
 
-`CHECK_INTERVAL` - Time in `ms` between every screenshot and queue-check.
+`CHECK_INTERVAL` - Time in `ms` between every screenshot and queue-check. Default: 30000 (30 sec).
 
-`DISPLAY` - The display index that WoW is running in. When you run `npm test` several `.png`-files will be saved to the `current working directory` , eg. `0.png`. You can run this command and look at the images so find the correct index of your monitor.
+`UPDATE_INTERVAL` - Time in `ms` between every position notification update. Default: 180000 (30min).
+
+`POSITION_THRESHOLD` - Queue position threshold for sending a notification regardless of `UPDATE_INTERVAL`. If your position is lower than this, a notifcation is sent. Default: 500
+
+`DISPLAY` - The display ID that WoW is running in. When you run `npm test` several `.png`-files will be saved to the `current working directory` , eg. `0.png`. You can run this command and look at the images to find the correct ID of your monitor.
 
 ### CLI options
 
@@ -56,10 +62,12 @@ Do a dry-run, which 'simulates' queue completion. Use this to test notifications
 Rerun first-time setup. E.g change PushBullet-device.
 
 ### --verbose, -v
-Sets log level to debug
+Sets log level to debug. Also outputs the processed image the OCR uses for recognition to `output.png`.
 
 ## Limitations
 
-* Currently, the way we capture screenshots on `windows` results in pretty bad image quality, so the OCR-lib is not able to recognize the queue size. This means that we cannot get the queue-position programatically.
+* Currently, the way we capture screenshots on `windows` may result in pretty bad image quality, so the OCR-lib is not able to recognize the queue size. This means that we cannot get the queue-position programatically.
 
 * World of Warcraft must be running in the foreground of the specified monitor.
+
+* You should try to have WoW running in fullscreen/fullscreen windowed, as more text on the screen is taxing for the OCR.

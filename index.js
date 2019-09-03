@@ -6,7 +6,8 @@ const fs = require('fs');
 const path = require('path');
 const player = require('play-sound')();
 const log = require('ulog')('WQA');
-
+const sharp = require('sharp');
+const inquirer = require('inquirer');
 const ocrWorker = new TesseractWorker();
 
 const notifier = new Notifier();
@@ -21,9 +22,8 @@ const queueDoneQuotes = [
     'Well met!',
 ];
 
-async function screenShot(screen = 0, save) {
-    let filename = null;
-    if (save) {
+async function screenShot(screen = 0, filename = null) {
+    if (filename) {
         filename = `${screen}.png`;
     }
 
@@ -31,17 +31,64 @@ async function screenShot(screen = 0, save) {
     return img;
 }
 
+async function processImage(img) {
+    // Black pixels below 200, white above = way easier for OCR to recognize text
+    const processed = await sharp(img)
+        .threshold(200)
+        .png()
+        .toBuffer();
+    return processed;
+}
+
 async function regocnize(img, opts = { verbose: true }) {
-    const job = ocrWorker.recognize(img, 'eng', {
+    const processedImg = await processImage(img);
+    const job = ocrWorker.recognize(processedImg, 'eng', {
         tessedit_ocr_engine_mode: OEM.TESSERACT_ONLY,
         tessedit_pageseg_mode: PSM.SPARSE_TEXT_OSD,
     });
+
     if (opts.verbose) {
         job.progress(p => log.debug(p));
+        fs.writeFile('output.png', processedImg, err => err && log.error(err));
+    }
+    let res;
+    try {
+        res = await job;
+    } catch (e) {
+        log.error('Recognizer failed', e);
+        return null;
     }
 
-    const res = await job;
-    return res.text;
+    log.debug(res.text);
+    return [res.text, res.words];
+}
+
+function findNumber(arr, start, end) {
+    for (let i = end; i > start && i < arr.length; i--) {
+        if (!isNaN(parseInt(arr[i]))) {
+            return arr[i];
+        }
+    }
+    return null;
+}
+
+function recognizeQueuePosition(tesseractWords) {
+    const words = tesseractWords.map(w => w.text.toLowerCase());
+    const positionKeywords = ['position', 'in', 'queue'];
+
+    for (let i = 0; i < words.length; i++) {
+        let w = words[i];
+        if (positionKeywords.includes(w)) {
+            //Ocr may fail some words, so we try some positions ahead
+            const pos = findNumber(words, i, i + 3);
+            if (pos) {
+                //try to find time:
+                const time = findNumber(words, i, i + 8);
+                return [pos, time];
+            }
+        }
+    }
+    return null;
 }
 
 function isProbablyLoggedIn(text) {
@@ -50,15 +97,42 @@ function isProbablyLoggedIn(text) {
     return words.some(w => lowertext.includes(w));
 }
 
+function handlePositionUpdate([pos, time], update) {
+    const updateThreshold = config.UPDATE_INTERVAL || 1800000; // 30 min
+    const positionThreshold = config.POSITION_THRESHOLD || 500;
+    const now = new Date();
+    log.debug('Position:', pos, ' Estimated time:', time);
+    if (pos <= positionThreshold || now - update >= updateThreshold) {
+        log.debug('Notification interval passed, sending notification')
+        if (notifier.device) {
+            notifier.notify(
+                'Queue position update',
+                `You are now in position: ${pos}.\nEstimated time: ${time} min.`
+            );
+        }
+    }
+}
+
 async function run(argv) {
     const sleepT = config.CHECK_INTERVAL || 60000;
     let loggedIn = false;
+    let lastUpdate = new Date();
+
     while (loggedIn === false) {
         const img = await screenShot(config.DISPLAY);
-        const screenText = await regocnize(img, argv);
+        const [screenText, words] = await regocnize(img, argv);
+        if (!screenText) {
+            process.exit(-1);
+        }
+
         loggedIn = isProbablyLoggedIn(screenText);
+        const posTime = recognizeQueuePosition(words);
+        if (posTime) {
+            handlePositionUpdate(posTime, lastUpdate);
+        }
         if (!loggedIn) {
             await sleep(sleepT);
+            lastUpdate = new Date();
         }
     }
     log.info('NOT IN QUEUE!');
@@ -119,7 +193,7 @@ async function dryRun(argv) {
     const displays = await screenshot.listDisplays();
     for (d in displays) {
         const display = displays[d];
-        screenShot(display.id, true).catch(err => {
+        screenShot(display.id, d).catch(err => {
             log.error('Failed to screenshot:', err);
         });
     }
