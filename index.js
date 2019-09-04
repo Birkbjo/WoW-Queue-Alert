@@ -178,7 +178,7 @@ async function run(argv) {
     }
     log.info('\nQueue complete!. Shutting down...');
     ocrWorker.terminate();
-    await timesUp();
+    await timesUp(argv);
 }
 
 function playSound() {
@@ -198,13 +198,13 @@ function playSound() {
     }
 }
 
-async function timesUp() {
+async function timesUp(argv) {
     if (notifier.active) {
         const body =
             queueDoneQuotes[Math.floor(Math.random() * queueDoneQuotes.length)];
         notifier.notify('WoW queue complete!', body);
     }
-    if (config.PLAY_SOUND) {
+    if (!argv.mute && config.PLAY_SOUND) {
         playSound();
     }
 }
@@ -213,7 +213,8 @@ function parseArgs(argv) {
     const parsedArgv = {
         verbose: false,
         dryRun: false,
-        setup: false
+        setup: false,
+        mute: false,
     };
 
     for (i in argv) {
@@ -232,6 +233,11 @@ function parseArgs(argv) {
             case '-s':
             case '--setup': {
                 parsedArgv.setup = true;
+                break;
+            }
+            case '-m':
+            case '--mute': {
+                parsedArgv.mute = true;
                 break;
             }
         }

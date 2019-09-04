@@ -58,6 +58,9 @@ The configuration-file is located in `config.json`.
 #### --dry
 Do a dry-run, which 'simulates' queue completion. Use this to test notifications-setup and get sample images of each monitor. Note that the volume may be loud!
 
+#### --mute, -m
+If true, do not play a sound when queue is complete.
+
 #### --setup, -s,
 Rerun first-time setup. E.g change PushBullet-device.
 
