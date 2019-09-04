@@ -257,7 +257,7 @@ async function dryRun(argv) {
             log.error('Failed to screenshot:', err);
         });
     }
-    await timesUp();
+    await timesUp(argv);
 }
 
 async function main(args) {
