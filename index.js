@@ -11,6 +11,7 @@ const child_process = require('child_process');
 
 const ocrWorker = new TesseractWorker();
 const notifier = new Notifier();
+const bottomBar = new inquirer.ui.BottomBar();
 
 let positionNotificationSent = false;
 
@@ -34,34 +35,38 @@ async function screenShot(screen = 0, filename = null) {
 }
 async function processImage(img) {
     const processed = await sharp(img)
-        // Black pixels below 200, white above = way easier for OCR to recognize text
+        // Black pixels below 180, white above = way easier for OCR to recognize text
         .threshold(180)
         .png()
         .toBuffer();
     return processed;
 }
 
-async function regocnize(img, opts = { verbose: true }) {
+async function recognize(img, opts = { verbose: true }) {
     const processedImg = await processImage(img);
-    const job = ocrWorker.recognize(processedImg, 'eng', {
-        tessedit_ocr_engine_mode: OEM.TESSERACT_ONLY,
-        tessedit_pageseg_mode: PSM.SPARSE_TEXT_OSD
-    });
+    const job = ocrWorker
+        .recognize(processedImg, 'eng', {
+            tessedit_ocr_engine_mode: OEM.TESSERACT_ONLY,
+            tessedit_pageseg_mode: PSM.SPARSE_TEXT_OSD
+        })
+        .progress(p => {
+            bottomBar.updateBottomBar(
+                `${p.status}: ${Math.round(p.progress * 100)}%`
+            );
+        });
 
     if (opts.verbose) {
-        job.progress(p => log.debug(p));
         fs.writeFile('output.png', processedImg, err => err && log.error(err));
     }
-    let res;
+
     try {
-        res = await job;
+        const res = await job;
+        log.debug(res.text);
+        return [res.text, res.words];
     } catch (e) {
         log.error('Recognizer failed', e);
-        return null;
+        return [null, null];
     }
-
-    log.debug(res.text);
-    return [res.text, res.words];
 }
 
 function findNumber(arr, start, end) {
@@ -122,27 +127,42 @@ function handlePositionUpdate([pos, time], lastUpdate) {
     return false;
 }
 
+function handleNotLoggedIn(words, lastUpdate, retries) {
+    const posTime = recognizeQueuePosition(words);
+    if (posTime) {
+        const didNotify = handlePositionUpdate(posTime, lastUpdate);
+        if (didNotify) {
+            lastUpdate = new Date();
+        }
+    } else {
+        if (retries-- < 1) {
+            log.warn('Queue not recognized for a long time, shutting down...');
+            process.exit(-1);
+        }
+        log.warn(
+            'Queue not recognized. Is WoW running on the specified display?'
+        );
+    }
+    bottomBar.updateBottomBar('Waiting for next check...');
+}
+
 async function run(argv) {
     const sleepT = config.CHECK_INTERVAL || 60000;
     let loggedIn = false;
     let lastUpdate = new Date();
+    let retryNoQueue = 10;
 
+    log.info('WoW Queue Alert running... (Press Ctrl+C to exit)');
     while (loggedIn === false) {
         const img = await screenShot(config.DISPLAY);
-        const [screenText, words] = await regocnize(img, argv);
+        const [screenText, words] = await recognize(img, argv);
         if (!screenText) {
             process.exit(-1);
         }
 
         loggedIn = isProbablyLoggedIn(screenText);
-        const posTime = recognizeQueuePosition(words);
-        if (posTime) {
-            const didNotify = handlePositionUpdate(posTime, lastUpdate);
-            if (didNotify) {
-                lastUpdate = new Date();
-            }
-        }
         if (!loggedIn) {
+            handleNotLoggedIn(words, retryNoQueue, lastUpdate);
             await sleep(sleepT);
         }
     }
@@ -158,12 +178,12 @@ function playSound() {
 
     const errHandler = err => err && log.error('Failed to play sound', err);
     if (process.platform === 'win32') {
-        child_process.execFile(
+        const proc = child_process.execFile(
             'cscript.exe',
             [path.join(__dirname, 'win32', 'wmplayer.vbs'), playPath],
             errHandler
         );
-    } else if (process.playform === 'darwin') {
+    } else if (process.platform === 'darwin') {
         child_process.execFile('afplay', [playPath], errHandler);
     }
 }
@@ -175,11 +195,7 @@ async function timesUp() {
         notifier.notify('WoW queue complete!', body);
     }
     if (config.PLAY_SOUND) {
-        const playPath = path.isAbsolute(config.PLAY_SOUND)
-            ? config.PLAY_SOUND
-            : path.join(__dirname, config.PLAY_SOUND);
-
-        playSound(playPath);
+        playSound();
     }
 }
 
@@ -225,17 +241,18 @@ async function dryRun(argv) {
             log.error('Failed to screenshot:', err);
         });
     }
-    timesUp();
+    await timesUp();
 }
 
 async function main(args) {
     const argv = parseArgs(args.slice(2));
     await setup(argv);
     if (argv.dryRun) {
-        dryRun(argv);
+        await dryRun(argv);
     } else {
-        run(argv);
+        await run(argv);
     }
+    bottomBar.close();
 }
 main(process.argv);
 
