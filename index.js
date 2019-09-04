@@ -51,7 +51,7 @@ async function recognize(img, opts = { verbose: true }) {
         })
         .progress(p => {
             bottomBar.updateBottomBar(
-                `${p.status}: ${Math.round(p.progress * 100)}%`
+                `${p.status}: ${Math.round(p.progress * 100)}% `
             );
         });
 
@@ -97,10 +97,18 @@ function recognizeQueuePosition(tesseractWords) {
     return null;
 }
 
-function isProbablyLoggedIn(text) {
-    const lowertext = text.toLowerCase();
-    const words = ['enter', 'world', 'back', 'create', 'delete', 'character'];
-    return words.some(w => lowertext.includes(w));
+function isProbablyLoggedIn(tesseractWords) {
+    //const lowertext = text.toLowerCase();
+    const loggedInWords = ['enter', 'world', 'back', 'create', 'delete', 'character'];
+    const queueWords = ['full','position', 'queue'];
+    for(tw of tesseractWords) {
+        const w = tw.text.toLowerCase();
+        if(loggedInWords.includes(w) && !queueWords.includes(w)) {
+            log.debug('Matched word:', w);
+            return true;
+        }
+    }
+    return false;
 }
 
 function handlePositionUpdate([pos, time], lastUpdate) {
@@ -129,6 +137,7 @@ function handlePositionUpdate([pos, time], lastUpdate) {
 
 function handleNotLoggedIn(words, lastUpdate, retries) {
     const posTime = recognizeQueuePosition(words);
+    let posStr = posTime ? `Position: ${posTime[0]}. Estimated time: ${posTime[1]} min. ` : ''
     if (posTime) {
         const didNotify = handlePositionUpdate(posTime, lastUpdate);
         if (didNotify) {
@@ -143,7 +152,7 @@ function handleNotLoggedIn(words, lastUpdate, retries) {
             'Queue not recognized. Is WoW running on the specified display?'
         );
     }
-    bottomBar.updateBottomBar('Waiting for next check...');
+    bottomBar.updateBottomBar(`${posStr}Waiting for next check...`);
 }
 
 async function run(argv) {
@@ -160,21 +169,21 @@ async function run(argv) {
             process.exit(-1);
         }
 
-        loggedIn = isProbablyLoggedIn(screenText);
+        loggedIn = isProbablyLoggedIn(words);
         if (!loggedIn) {
             handleNotLoggedIn(words, retryNoQueue, lastUpdate);
             await sleep(sleepT);
         }
     }
-    log.info('Queue complete!. Shutting down...');
+    log.info('\nQueue complete!. Shutting down...');
     ocrWorker.terminate();
     await timesUp();
 }
 
 function playSound() {
     const playPath = path.isAbsolute(config.PLAY_SOUND)
-        ? config.PLAY_SOUND
-        : path.join(__dirname, config.PLAY_SOUND);
+        ? path.normalize(config.PLAY_SOUND)
+        : path.normalize(path.join(__dirname, config.PLAY_SOUND));
 
     const errHandler = err => err && log.error('Failed to play sound', err);
     if (process.platform === 'win32') {

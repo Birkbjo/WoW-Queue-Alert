@@ -70,4 +70,4 @@ Sets log level to debug. Also outputs the processed image the OCR uses for recog
 
 * World of Warcraft must be running in the foreground of the specified monitor.
 
-* You should try to have WoW running in fullscreen/fullscreen windowed, as more text on the screen is taxing for the OCR.
+* You should try to have WoW running in fullscreen/fullscreen windowed, as more text on the screen is taxing for the OCR. You may also get false positives, as any of the matching words could be on your screen.
