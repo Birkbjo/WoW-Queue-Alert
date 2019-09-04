@@ -4,19 +4,21 @@ const Pushbullet = require('pushbullet');
 const inquirer = require('inquirer');
 const fs = require('fs');
 const log = require('ulog')('notifier');
+const { writeConfig } = require('./utils.js');
 
 class Notifier {
+    constructor() {
+        this.active = false;
+        this.lastNotificationDate = null;
+    }
+
     async init(argv) {
         if (!config || !config.PUSHBULLET.API_KEY) {
             log.info('Notifier not configured');
             return;
         }
 
-        this.PB = new Pushbullet(config.PUSHBULLET.API_KEY);
-        this.PB.note = promisify(this.PB.note);
-        this.PB.devices = promisify(this.PB.devices);
-        this.active = false;
-        this.lastNotificationTime = null;
+        this.createPB(config.PUSHBULLET.API_KEY);
 
         if (
             (!config.PUSHBULLET.DEVICE_ID &&
@@ -24,13 +26,42 @@ class Notifier {
             argv.setup
         ) {
             const success = await this.setup();
-            if(success) {
+            if (success) {
                 this.active = true;
+            } else {
+                log.info('Failed to setup notifier');
             }
         } else {
             this.device = config.PUSHBULLET.DEVICE_ID;
             this.active = true;
+            this.createPB(config.PUSHBULLET.API_KEY);
         }
+    }
+
+    createPB(apiKey) {
+        this.PB = new Pushbullet(apiKey);
+        this.PB.note = promisify(this.PB.note);
+        this.PB.devices = promisify(this.PB.devices);
+        return this.PB;
+    }
+
+    setupQuestions(devices) {
+        return [
+            {
+                type: 'list',
+                message: 'Select a device to send notifications to:',
+                name: 'device',
+                choices:
+                    devices.map(d => ({
+                        name: `${d.nickname} [${d.type}]`,
+                        value: d,
+                    }))
+                    .concat({
+                        name: 'All devices',
+                        value: { nickname: 'All devices', iden: null },
+                    })
+                }
+        ];
     }
 
     async setup() {
@@ -40,30 +71,10 @@ class Notifier {
                 log.error('No devices found.');
                 return;
             }
-            
-            const answer = await inquirer.prompt([
-                {
-                    type: 'list',
-                    message: 'Select a device to send notifications to:',
-                    name: 'device',
-                    choices: res.devices
-                        .map(d => ({
-                            name: `${d.nickname} [${d.type}]`,
-                            value: d,
-                        }))
-                        .concat({
-                            name: 'All devices',
-                            value: { nickname: 'All devices', iden: null },
-                        }),
-                },
-            ]);
+            const answer = await inquirer.prompt(this.setupQuestions(res.devices));
             this.device = answer.device.iden;
             config.PUSHBULLET.DEVICE_ID = this.device;
-            fs.writeFileSync(
-                'config.json',
-                JSON.stringify(config, null, 4).concat('\n'),
-                'utf8'
-            );
+            writeConfig();
             log.info(
                 `Device set to: ${answer.device.nickname} (id:${answer.device.iden})`
             );
@@ -75,10 +86,10 @@ class Notifier {
     }
 
     async notify(title, body) {
-        let d
+        let d;
         try {
             d = await this.PB.note(this.device, title, body);
-            this.lastNotificationTime = new Date();
+            this.lastNotificationDate = new Date();
             log.debug('Notification sent!');
         } catch (e) {
             log.error('Failed to send notification: ', e);

@@ -8,10 +8,11 @@ const log = require('ulog')('WQA');
 const sharp = require('sharp');
 const inquirer = require('inquirer');
 const child_process = require('child_process');
-
+const { writeConfig, sleep } = require('./utils');
 const ocrWorker = new TesseractWorker();
 const notifier = new Notifier();
 const bottomBar = new inquirer.ui.BottomBar();
+
 
 let positionNotificationSent = false;
 
@@ -71,8 +72,9 @@ async function recognize(img, opts = { verbose: true }) {
 
 function findNumber(arr, start, end) {
     for (let i = end; i > start && i < arr.length; i--) {
-        if (!isNaN(parseInt(arr[i]))) {
-            return arr[i];
+        const parsed = parseInt(arr[i])
+        if (!isNaN(parsed)) {
+            return parsed;
         }
     }
     return null;
@@ -98,17 +100,21 @@ function recognizeQueuePosition(tesseractWords) {
 }
 
 function isProbablyLoggedIn(tesseractWords) {
-    //const lowertext = text.toLowerCase();
+    const minMatches = 2;
     const loggedInWords = ['enter', 'world', 'back', 'create', 'delete', 'character'];
-    const queueWords = ['full','position', 'queue'];
+    const queueWords = ['full','position', 'in', 'queue'];
+    let queueWordMatches = []
+    let loggedInMatches = []
     for(tw of tesseractWords) {
         const w = tw.text.toLowerCase();
-        if(loggedInWords.includes(w) && !queueWords.includes(w)) {
-            log.debug('Matched word:', w);
-            return true;
+        if(queueWords.includes(w)) {
+            queueWordMatches.push(w)
+        }
+        if(loggedInWords.includes(w)) {
+            loggedInMatches.push(w)
         }
     }
-    return false;
+    return loggedInMatches.length >= minMatches && queueWordMatches.length < minMatches;
 }
 
 function handlePositionUpdate([pos, time], lastUpdate) {
@@ -135,7 +141,7 @@ function handlePositionUpdate([pos, time], lastUpdate) {
     return false;
 }
 
-function handleNotLoggedIn(words, lastUpdate, retries) {
+function handleNotLoggedIn(words, retries, lastUpdate) {
     const posTime = recognizeQueuePosition(words);
     let didNotify = false;
     let posStr = posTime ? `Position: ${posTime[0]}. Estimated time: ${posTime[1]} min. ` : ''
@@ -147,7 +153,7 @@ function handleNotLoggedIn(words, lastUpdate, retries) {
             process.exit(-1);
         }
         log.warn(
-            'Queue not recognized. Is WoW running on the specified display?'
+            'Queue not recognized. Is WoW running on the specified monitor?'
         );
     }
     bottomBar.updateBottomBar(`${posStr}Waiting for next check...`);
@@ -272,6 +278,3 @@ async function main(args) {
 }
 main(process.argv);
 
-function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
