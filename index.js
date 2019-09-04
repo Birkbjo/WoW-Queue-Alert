@@ -137,12 +137,10 @@ function handlePositionUpdate([pos, time], lastUpdate) {
 
 function handleNotLoggedIn(words, lastUpdate, retries) {
     const posTime = recognizeQueuePosition(words);
+    let didNotify = false;
     let posStr = posTime ? `Position: ${posTime[0]}. Estimated time: ${posTime[1]} min. ` : ''
     if (posTime) {
-        const didNotify = handlePositionUpdate(posTime, lastUpdate);
-        if (didNotify) {
-            lastUpdate = new Date();
-        }
+        didNotify = handlePositionUpdate(posTime, lastUpdate);
     } else {
         if (retries-- < 1) {
             log.warn('Queue not recognized for a long time, shutting down...');
@@ -153,6 +151,7 @@ function handleNotLoggedIn(words, lastUpdate, retries) {
         );
     }
     bottomBar.updateBottomBar(`${posStr}Waiting for next check...`);
+    return didNotify
 }
 
 async function run(argv) {
@@ -168,10 +167,12 @@ async function run(argv) {
         if (!screenText) {
             process.exit(-1);
         }
-
         loggedIn = isProbablyLoggedIn(words);
         if (!loggedIn) {
-            handleNotLoggedIn(words, retryNoQueue, lastUpdate);
+            const didNotify = handleNotLoggedIn(words, retryNoQueue, lastUpdate);
+            if(didNotify) {
+                lastUpdate = new Date();
+            }
             await sleep(sleepT);
         }
     }
