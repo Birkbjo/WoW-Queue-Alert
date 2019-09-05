@@ -39,7 +39,7 @@ To get notifications to your device:
 
 ### Configuration
 
-The configuration-file is located in `config.json`.
+The user configuration-file is located in `config.json`. If you haven't ran the program yet you can create it or just modify `default.config.json`.
 
 `PUSHBULLET` - Contains parameters for pushbullet integration. See [Notifications](#notifications).
 

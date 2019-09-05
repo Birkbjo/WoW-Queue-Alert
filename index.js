@@ -1,21 +1,18 @@
 const screenshot = require('screenshot-desktop');
 const { TesseractWorker, OEM, PSM } = require('tesseract.js');
 const Notifier = require('./notify');
-const config = require('./config.json');
 const fs = require('fs');
 const path = require('path');
 const log = require('ulog')('WQA');
 const sharp = require('sharp');
 const inquirer = require('inquirer');
-const child_process = require('child_process');
-const { writeConfig, sleep } = require('./utils');
+const { writeConfig, sleep, config, playSound } = require('./utils');
 const ocrWorker = new TesseractWorker();
 const notifier = new Notifier();
 const bottomBar = new inquirer.ui.BottomBar();
 
 
 let positionNotificationSent = false;
-
 const queueDoneQuotes = [
     "Time's up, let's do this! LEEEEEERRROYYYYY JENKKKIIINNNSS",
     "Lok'tar ogar!",
@@ -187,23 +184,6 @@ async function run(argv) {
     await timesUp(argv);
 }
 
-function playSound() {
-    const playPath = path.isAbsolute(config.PLAY_SOUND)
-        ? path.normalize(config.PLAY_SOUND)
-        : path.normalize(path.join(__dirname, config.PLAY_SOUND));
-
-    const errHandler = err => err && log.error('Failed to play sound', err);
-    if (process.platform === 'win32') {
-        const proc = child_process.execFile(
-            'cscript.exe',
-            [path.join(__dirname, 'win32', 'wmplayer.vbs'), playPath],
-            errHandler
-        );
-    } else if (process.platform === 'darwin') {
-        child_process.execFile('afplay', [playPath], errHandler);
-    }
-}
-
 async function timesUp(argv) {
     if (notifier.active) {
         const body =
@@ -211,7 +191,7 @@ async function timesUp(argv) {
         notifier.notify('WoW queue complete!', body);
     }
     if (!argv.mute && config.PLAY_SOUND) {
-        playSound();
+        playSound(config.PLAY_SOUND);
     }
 }
 

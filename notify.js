@@ -1,10 +1,9 @@
 const { promisify } = require('util');
-const config = require('./config.json');
 const Pushbullet = require('pushbullet');
 const inquirer = require('inquirer');
 const fs = require('fs');
 const log = require('ulog')('notifier');
-const { writeConfig } = require('./utils.js');
+const { writeConfig, config } = require('./utils.js');
 
 class Notifier {
     constructor() {
@@ -86,15 +85,15 @@ class Notifier {
     }
 
     async notify(title, body) {
-        let d;
+        let res;
         try {
-            d = await this.PB.note(this.device, title, body);
+            res = await this.PB.note(this.device, title, body);
             this.lastNotificationDate = new Date();
             log.debug('Notification sent!');
         } catch (e) {
             log.error('Failed to send notification: ', e);
         }
-        return d;
+        return res;
     }
 }
 
