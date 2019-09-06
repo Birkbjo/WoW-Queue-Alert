@@ -1,11 +1,14 @@
 const fs = require('fs');
 const path = require('path');
+const child_process = require('child_process');
+const { promisify } = require('util');
 
-const USER_CONFIG = 'config.json'
+const execFile = promisify(child_process.execFile);
+const USER_CONFIG = 'config.json';
 const configPath = p => path.join(__dirname, p);
 const configLocs = ['default.config.json', USER_CONFIG].map(configPath);
-
-let CONFIG = null
+const log = require('ulog')('utils');
+let CONFIG = null;
 
 function writeConfig(override) {
     fs.writeFileSync(
@@ -24,7 +27,7 @@ function loadFile(path) {
 }
 
 function getConfig() {
-    if(CONFIG) {
+    if (CONFIG) {
         return CONFIG;
     }
     CONFIG = configLocs
@@ -34,23 +37,22 @@ function getConfig() {
     return CONFIG;
 }
 
-function playSound(filePath) {
+async function playSound(filePath) {
     const playPath = path.isAbsolute(filePath)
         ? path.normalize(filePath)
         : path.normalize(path.join(__dirname, filePath));
-
-    const errHandler = err => err && log.error('Failed to play sound', err);
-    let proc
+    const opts = {
+        timeout: 10000
+    };
     if (process.platform === 'win32') {
-        proc = child_process.execFile(
+        return execFile(
             'cscript.exe',
             [path.join(__dirname, 'win32', 'wmplayer.vbs'), playPath],
-            errHandler
+            opts
         );
     } else if (process.platform === 'darwin') {
-        proc = child_process.execFile('afplay', [playPath], errHandler);
+        return execFile('afplay', [playPath], opts);
     }
-    return
 }
 
 function sleep(ms) {
@@ -61,5 +63,5 @@ module.exports = {
     config: getConfig(),
     playSound,
     sleep,
-    writeConfig,
+    writeConfig
 };

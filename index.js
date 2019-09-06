@@ -11,7 +11,6 @@ const ocrWorker = new TesseractWorker();
 const notifier = new Notifier();
 const bottomBar = new inquirer.ui.BottomBar();
 
-
 let positionNotificationSent = false;
 const queueDoneQuotes = [
     "Time's up, let's do this! LEEEEEERRROYYYYY JENKKKIIINNNSS",
@@ -69,7 +68,7 @@ async function recognize(img, opts = { debug: true }) {
 
 function findNumber(arr, start, end) {
     for (let i = end; i > start && i < arr.length; i--) {
-        const parsed = parseInt(arr[i])
+        const parsed = parseInt(arr[i]);
         if (!isNaN(parsed)) {
             return parsed;
         }
@@ -98,20 +97,30 @@ function recognizeQueuePosition(tesseractWords) {
 
 function isProbablyLoggedIn(tesseractWords) {
     const minMatches = 2;
-    const loggedInWords = ['enter', 'world', 'back', 'create', 'delete', 'character'];
-    const queueWords = ['full','position', 'in', 'queue'];
-    let queueWordMatches = []
-    let loggedInMatches = []
-    for(tw of tesseractWords) {
+    const loggedInWords = [
+        'enter',
+        'world',
+        'back',
+        'create',
+        'delete',
+        'character'
+    ];
+    const queueWords = ['full', 'position', 'in', 'queue'];
+    let queueWordMatches = [];
+    let loggedInMatches = [];
+    for (tw of tesseractWords) {
         const w = tw.text.toLowerCase();
-        if(queueWords.includes(w)) {
-            queueWordMatches.push(w)
+        if (queueWords.includes(w)) {
+            queueWordMatches.push(w);
         }
-        if(loggedInWords.includes(w)) {
-            loggedInMatches.push(w)
+        if (loggedInWords.includes(w)) {
+            loggedInMatches.push(w);
         }
     }
-    return loggedInMatches.length >= minMatches && queueWordMatches.length < minMatches;
+    return (
+        loggedInMatches.length >= minMatches &&
+        queueWordMatches.length < minMatches
+    );
 }
 
 function handlePositionUpdate([pos, time], lastUpdate) {
@@ -141,7 +150,9 @@ function handlePositionUpdate([pos, time], lastUpdate) {
 function handleNotLoggedIn(words, retries, lastUpdate) {
     const posTime = recognizeQueuePosition(words);
     let didNotify = false;
-    let posStr = posTime ? `Position: ${posTime[0]}. Estimated time: ${posTime[1]} min. ` : ''
+    let posStr = posTime
+        ? `Position: ${posTime[0]}. Estimated time: ${posTime[1]} min. `
+        : '';
     if (posTime) {
         didNotify = handlePositionUpdate(posTime, lastUpdate);
     } else {
@@ -154,7 +165,7 @@ function handleNotLoggedIn(words, retries, lastUpdate) {
         );
     }
     bottomBar.updateBottomBar(`${posStr}Waiting for next check...`);
-    return didNotify
+    return didNotify;
 }
 
 async function run(argv) {
@@ -172,8 +183,12 @@ async function run(argv) {
         }
         loggedIn = isProbablyLoggedIn(words);
         if (!loggedIn) {
-            const didNotify = handleNotLoggedIn(words, retryNoQueue, lastUpdate);
-            if(didNotify) {
+            const didNotify = handleNotLoggedIn(
+                words,
+                retryNoQueue,
+                lastUpdate
+            );
+            if (didNotify) {
                 lastUpdate = new Date();
             }
             await sleep(sleepT);
@@ -191,7 +206,11 @@ async function timesUp(argv) {
         notifier.notify('WoW queue complete!', body);
     }
     if (!argv.mute && config.PLAY_SOUND) {
-        playSound(config.PLAY_SOUND);
+        try {
+            await playSound(config.PLAY_SOUND);
+        } catch (e) {
+            log.error('Failed to play sound:', e.message);
+        }
     }
 }
 
@@ -201,6 +220,7 @@ function parseArgs(argv) {
         dryRun: false,
         setup: false,
         mute: false,
+        interactive: false
     };
 
     for (i in argv) {
@@ -226,35 +246,83 @@ function parseArgs(argv) {
                 parsedArgv.mute = true;
                 break;
             }
+            case '-i':
+            case '--interactive': {
+                parsedArgv.interactive = true;
+                break;
+            }
         }
     }
     return parsedArgv;
 }
 
-async function interactiveSetup(argv) {
+async function interactiveStart(argv) {
+    const answers = await inquirer.prompt([
+        {
+            type: 'list',
+            message: 'What do you want to do?',
+            name: 'answer',
+            choices: [
+                {
+                    name: 'Start Queue monitor',
+                    value: 'run'
+                },
+                {
+                    name: 'Dry run. Used for testing setup',
+                    value: 'dryRun'
+                },
+                {
+                    name: 'Start setup',
+                    value: 'setup'
+                },
+                {
+                    name: 'Exit',
+                    value: 'exit'
+                }
+            ]
+        }
+    ]);
+    switch (answers.answer) {
+        case 'run': {
+            await run(argv);
+            break;
+        }
+        case 'dryRun': {
+            await dryRun(argv);
+            break;
+        }
+        case 'setup': {
+            argv.setup = true;
+            await setup(argv);
 
+            break;
+        }
+        case 'exit': {
+            return;
+        }
+    }
+    await interactiveStart(argv);
 }
 
 async function interactiveDisplay(argv) {
     const displays = await screenshot.listDisplays();
 
-    if(displays.length === 1) {
+    if (displays.length < 2) {
         log.info('Only one monitor found. Using primary.');
-        return
+        return;
     }
     const answer = await inquirer.prompt([
         {
             type: 'list',
             message: 'Select the monitor that WoW is running on:',
             name: 'display',
-            choices: displays
-                .map(d => ({
-                    name: `${d.name} (id: ${d.id})${d.primary ? ' [Primary]' : ''}`,
-                    value: d
-                }))
-        },
+            choices: displays.map(d => ({
+                name: `${d.name} (id: ${d.id})${d.primary ? ' [Primary]' : ''}`,
+                value: d
+            }))
+        }
     ]);
-    const display = answer.display
+    const display = answer.display;
     config.DISPLAY = display.id;
     writeConfig();
     log.info('Display selected:', display.name);
@@ -262,7 +330,7 @@ async function interactiveDisplay(argv) {
 
 async function setup(argv) {
     await notifier.init(config.PUSHBULLET.API_KEY, argv);
-    if(argv.setup) {
+    if (argv.setup) {
         await interactiveDisplay();
     }
 }
@@ -280,13 +348,16 @@ async function dryRun(argv) {
 
 async function main(args) {
     const argv = parseArgs(args.slice(2));
-    await setup(argv);
-    if (argv.dryRun) {
-        await dryRun(argv);
+    if (argv.interactive) {
+        await interactiveStart(argv);
     } else {
-        await run(argv);
+        await setup(argv);
+        if (argv.dryRun) {
+            await dryRun(argv);
+        } else {
+            await run(argv);
+        }
     }
     bottomBar.close();
 }
 main(process.argv);
-
