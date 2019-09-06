@@ -18,9 +18,16 @@ No violation of TOS, no automation!
 
 ## Usage
 
+### Easy mode
+
+If you are not familiar with command lines, you can use the batch scripts in the `bin`-folder.
+Just double-click the `quickstart.bat` and it will install dependencies and run the program.
+
+### Normal mode
 1. Open a terminal and `cd` to the folder of this project.
 2. `node index.js` or `npm start`
 
+See [CLI options](#cli-options) for more arguments.
 ## Setup
 
 By default it takes screenshots of your primary monitor, and plays an alert when it thinks you are in Character Select screen.
@@ -59,12 +66,12 @@ The user configuration-file is located in `config.json`. If you haven't ran the 
 Do a dry-run, which 'simulates' queue completion. Use this to test notifications-setup and get sample images of each monitor. Note that the volume may be loud!
 
 #### --mute, -m
-If true, do not play a sound when queue is complete.
+Do not play a sound when queue is complete.
 
 #### --setup, -s,
 Rerun first-time setup. E.g change PushBullet-device.
 
-### --verbose, -v
+### --debug, -d
 Sets log level to debug. Also outputs the processed image the OCR uses for recognition to `output.png`.
 
 ## Limitations
@@ -74,3 +81,4 @@ Sets log level to debug. Also outputs the processed image the OCR uses for recog
 * World of Warcraft must be running in the foreground of the specified monitor.
 
 * You should try to have WoW running in fullscreen/fullscreen windowed, as more text on the screen is taxing for the OCR. You may also get false positives, as any of the matching words could be on your screen.
+* The client must be english. Support for other languages should be possible, but I need screenshots (and the words in text-form) for both queue-screen and character select screen.

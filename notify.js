@@ -11,20 +11,25 @@ class Notifier {
         this.lastNotificationDate = null;
     }
 
-    async init(argv) {
-        if (!config || !config.PUSHBULLET.API_KEY) {
-            log.info('Notifier not configured');
-            return;
+    async init(apiKey, argv) {
+        if (!apiKey) {
+            if(argv.setup) {
+                apiKey = await this.askApiKey()
+            }
+            if(!apiKey) {
+                log.info('Notifier not configured. Rerun with -s to setup.');
+                return
+            }
         }
 
-        this.createPB(config.PUSHBULLET.API_KEY);
+        this.createPB(apiKey);
 
         if (
             (!config.PUSHBULLET.DEVICE_ID &&
                 config.PUSHBULLET.DEVICE_ID !== null) ||
             argv.setup
         ) {
-            const success = await this.setup();
+            const success = await this.setupDevices();
             if (success) {
                 this.active = true;
             } else {
@@ -33,8 +38,7 @@ class Notifier {
         } else {
             this.device = config.PUSHBULLET.DEVICE_ID;
             this.active = true;
-            this.createPB(config.PUSHBULLET.API_KEY);
-        }
+        }       
     }
 
     createPB(apiKey) {
@@ -42,6 +46,28 @@ class Notifier {
         this.PB.note = promisify(this.PB.note);
         this.PB.devices = promisify(this.PB.devices);
         return this.PB;
+    }
+
+    async askApiKey() {
+        const questions = [
+            {
+                type: 'confirm',
+                message: 'No API key found, do you want to setup pushbullet now?',
+                name: 'apiKeySetup',
+            },
+            {
+                type: 'input',
+                name: 'apiKey',
+                when: (answers) => answers.apiKeySetup,
+                message: 'Input the API-key from Pushbullet Account page (https://www.pushbullet.com/#settings/account)\n',
+            }
+        ]
+        const answers = await inquirer.prompt(questions);
+        const apiKey = answers.apiKey
+        if(apiKey) {
+            return apiKey;
+        }
+        return false;
     }
 
     setupQuestions(devices) {
@@ -63,7 +89,7 @@ class Notifier {
         ];
     }
 
-    async setup() {
+    async setupDevices() {
         try {
             const res = await this.PB.devices();
             if (!res.devices || res.devices.length < 1) {
@@ -79,7 +105,7 @@ class Notifier {
             );
             return true;
         } catch (e) {
-            log.error('Failed to get devices: ', e);
+            log.error('Failed to get devices: ', e.message);
             return false;
         }
     }

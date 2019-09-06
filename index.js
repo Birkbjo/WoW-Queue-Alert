@@ -40,7 +40,7 @@ async function processImage(img) {
     return processed;
 }
 
-async function recognize(img, opts = { verbose: true }) {
+async function recognize(img, opts = { debug: true }) {
     const processedImg = await processImage(img);
     const job = ocrWorker
         .recognize(processedImg, 'eng', {
@@ -53,7 +53,7 @@ async function recognize(img, opts = { verbose: true }) {
             );
         });
 
-    if (opts.verbose) {
+    if (opts.debug) {
         fs.writeFile('output.png', processedImg, err => err && log.error(err));
     }
 
@@ -197,7 +197,7 @@ async function timesUp(argv) {
 
 function parseArgs(argv) {
     const parsedArgv = {
-        verbose: false,
+        debug: false,
         dryRun: false,
         setup: false,
         mute: false,
@@ -206,9 +206,9 @@ function parseArgs(argv) {
     for (i in argv) {
         const arg = argv[i];
         switch (arg) {
-            case '-v':
-            case '--verbose': {
-                parsedArgv.verbose = true;
+            case '-d':
+            case '--debug': {
+                parsedArgv.debug = true;
                 log.level = log.DEBUG;
                 break;
             }
@@ -231,8 +231,40 @@ function parseArgs(argv) {
     return parsedArgv;
 }
 
+async function interactiveSetup(argv) {
+
+}
+
+async function interactiveDisplay(argv) {
+    const displays = await screenshot.listDisplays();
+
+    if(displays.length === 1) {
+        log.info('Only one monitor found. Using primary.');
+        return
+    }
+    const answer = await inquirer.prompt([
+        {
+            type: 'list',
+            message: 'Select the monitor that WoW is running on:',
+            name: 'display',
+            choices: displays
+                .map(d => ({
+                    name: `${d.name} (id: ${d.id})${d.primary ? ' [Primary]' : ''}`,
+                    value: d
+                }))
+        },
+    ]);
+    const display = answer.display
+    config.DISPLAY = display.id;
+    writeConfig();
+    log.info('Display selected:', display.name);
+}
+
 async function setup(argv) {
-    await notifier.init(argv);
+    await notifier.init(config.PUSHBULLET.API_KEY, argv);
+    if(argv.setup) {
+        await interactiveDisplay();
+    }
 }
 
 async function dryRun(argv) {
