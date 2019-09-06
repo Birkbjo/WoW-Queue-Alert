@@ -42,7 +42,7 @@ async function playSound(filePath) {
         ? path.normalize(filePath)
         : path.normalize(path.join(__dirname, filePath));
     const opts = {
-        timeout: 10000
+        timeout: 30000
     };
     if (process.platform === 'win32') {
         return execFile(
